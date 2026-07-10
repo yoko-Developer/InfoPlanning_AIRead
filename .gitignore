@@ -1,0 +1,38 @@
+# ビルド成果物
+target/
+build/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# ログ
+logs/
+*.log
+
+# IDE設定
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated/
+.springBeans
+.sts4-cache/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# バッチ実行時の生成物
+loan_detail_merge_batch/merged.csv
+loan_detail_merge_batch/result.zip
+
+# 顧客データ（サンプル含む）
+loan_detail_merge_batch/sample.csv
+mergerowsaireadcsv/sample_before/
+mergerowsaireadcsv/sample_after/
