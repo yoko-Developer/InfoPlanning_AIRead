@@ -851,8 +851,10 @@ class CsvDateConverterServiceTest {
         String normalized2 = (String) normalizeMethod.invoke(service, "R3~4~30", "~");
         assertEquals("20210430", convertMethod.invoke(service, normalized2));
 
-        // 追加区切り文字が指定されていない場合、全角スラッシュはそのまま残り変換されない
+        // 追加区切り文字が指定されていない場合でも、全角スラッシュはDateParser側で常時変換されるため
+        // normalizeExtraSeparators自体は素通り（無変換）だが、後続のconvertToYearMonthで変換される
         String normalized3 = (String) normalizeMethod.invoke(service, "H10／5", "");
-        assertEquals("H10／5", convertMethod.invoke(service, normalized3));
+        assertEquals("H10／5", normalized3); // normalizeExtraSeparators自体は変換しない
+        assertEquals("199805", convertMethod.invoke(service, normalized3)); // DateParserが全角スラッシュを変換
     }
 }

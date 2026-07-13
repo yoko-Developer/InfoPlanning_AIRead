@@ -26,7 +26,9 @@ import java.util.regex.Pattern;
  * 対応する日付形式：
  * 1. 和暦形式:
  *    - 年月: H10.5、昭和63.12、令和3.4等
- *    - 年月日: R3.12.25、H10.5.15、昭和63.12.31等
+ *    - 年月日: R3.12.25、H10.5.15、昭和63.12.31、平 1・1・1、H.30/09/30、R.3/9/30等
+ *      （元号と年の間は区切り文字なし・空白・. - / , のいずれか1つを許容。
+ *        年月日各項目間の区切り文字は西暦形式と同じ . - / , に対応）
  * 2. 西暦8桁: 20231225（YYYYMMDD）
  * 3. 西暦6桁末日: 202312末、202312末日（YYYYMM末）
  * 4. 西暦区切り文字年月日・年月: 2023-04-30、2023.04.30、2023/04/30、2023,04,30等
@@ -47,14 +49,26 @@ public class DateParser {
         {"元","1"},  // 元年を1年として扱う
         {"Ｓ","S"}, {"Ｈ","H"}, {"Ｒ","R"}, {"Ｌ","L"},  // 全角年号を半角に変換
         {"．","."}, {"。","."}, {"・","."},  // 全角区切り文字を半角ドットに変換
-        {"－","-"}, {"ー","-"}, {"—","-"}, {"―","-"}  // 全角ハイフンを半角ハイフンに変換
+        {"－","-"}, {"ー","-"}, {"—","-"}, {"―","-"},  // 全角ハイフンを半角ハイフンに変換
+        {"／","/"},  // 全角スラッシュを半角スラッシュに変換
+        {"　"," "}  // 全角スペースを半角スペースに変換
     };
 
-    /** 和暦年月パターン（H10.5、昭和63.12、平成10.5等） */
-    private static final Pattern WAREKI_YM_PATTERN = Pattern.compile("^([HSRL]|昭和|平成|令和|昭|平|令)(\\d{1,2})\\.(\\d{1,2})$");
-    
-    /** 和暦年月日パターン（R3.12.25、H10.5.15、昭和63.12.31等） */
-    private static final Pattern WAREKI_YMD_PATTERN = Pattern.compile("^([HSRL]|昭和|平成|令和|昭|平|令)(\\d{1,2})\\.(\\d{1,2})\\.(\\d{1,2})$");
+    /**
+     * 和暦の年号と年の間に許容する区切り文字（H.30、R．３等に対応するため任意で1つまで許容）
+     * 年月日各項目間の区切り文字（. - / , ）は西暦形式と同様に複数個の連続も許容する
+     */
+    private static final String WAREKI_SEP = "[.\\-/,]";
+
+    /** 和暦年月パターン（H10.5、昭和63.12、平成10.5、H.30等）
+     *  元号と年の間には空白や区切り文字（. - / ,）を任意で1つ挟める */
+    private static final Pattern WAREKI_YM_PATTERN = Pattern.compile(
+            "^([HSRL]|昭和|平成|令和|昭|平|令)\\s*" + WAREKI_SEP + "?\\s*(\\d{1,2})" + WAREKI_SEP + "+(\\d{1,2})$");
+
+    /** 和暦年月日パターン（R3.12.25、H10.5.15、昭和63.12.31、H.30/09/30、平 1・1・1等）
+     *  元号と年の間には空白や区切り文字（. - / ,）を任意で1つ挟める */
+    private static final Pattern WAREKI_YMD_PATTERN = Pattern.compile(
+            "^([HSRL]|昭和|平成|令和|昭|平|令)\\s*" + WAREKI_SEP + "?\\s*(\\d{1,2})" + WAREKI_SEP + "+(\\d{1,2})" + WAREKI_SEP + "+(\\d{1,2})$");
     
     /** 西暦8桁パターン（20231225等） */
     private static final Pattern YYYYMMDD_PATTERN = Pattern.compile("^(\\d{4})(\\d{2})(\\d{2})$");
@@ -115,6 +129,24 @@ public class DateParser {
             throw new FormatException(src + " is not parsable");
         }
         return parsed;
+    }
+
+    /**
+     * 和暦の年月日形式（元号+年+月+日の3項目）に構造的にマッチするかを判定する
+     *
+     * hasOtherFormatDatePrecisionの「日が1日の場合は年月精度」という簡易ヒューリスティックは、
+     * 「年月のみで日が1日固定」と「年月日が明示的に指定されていて日がたまたま1日」を
+     * 区別できない。本メソッドは正規化後の文字列が年月日3項目パターンに構造的にマッチするか
+     * のみで判定するため、日の値（1日かどうか）に関わらず正確に判定できる。
+     *
+     * @param src 判定対象の文字列
+     * @return 和暦の年月日形式に構造的にマッチする場合true
+     */
+    public static boolean isWarekiWithExplicitDay(String src) {
+        if (StringUtils.isEmpty(src)) {
+            return false;
+        }
+        return WAREKI_YMD_PATTERN.matcher(normalizeString(src)).matches();
     }
 
     /** パターンとパーサーのペア */

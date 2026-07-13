@@ -287,7 +287,37 @@ public class CsvDateConverterServiceIntegrationTest {
 
     @Test
     public void test追加区切り文字を指定しない場合は未対応の区切り文字は変換されない(@TempDir Path tempDir) throws Exception {
-        // 追加区切り文字を指定しない場合、全角スラッシュ等は従来通り変換されないことを確認
+        // 全角スラッシュ「／」はDateParserで常時（無条件に）半角スラッシュへ変換されるようになったため、
+        // 追加区切り文字の指定なしでも変換される。ここでは追加区切り文字未指定時の非対応確認として
+        // チルダ「~」（DateParserでは変換されない文字）を使用する。
+
+        Path inputFile = tempDir.resolve("input.csv");
+        Path outputFile = tempDir.resolve("output.csv");
+
+        List<String> inputLines = Arrays.asList(
+            "項目名,列2,列3,列4,日付データ",
+            "取得日,データ1,データ2,データ3,H10~5"
+        );
+        Files.write(inputFile, inputLines);
+
+        int convertedCount = service.convertCsvFile(
+            inputFile.toString(),
+            outputFile.toString(),
+            Arrays.asList("取得日"),
+            "UTF-8",
+            OutputFormat.YYYYMMDD
+        );
+
+        assertEquals(0, convertedCount); // 変換されない
+
+        List<String> outputLines = Files.readAllLines(outputFile);
+        assertTrue(outputLines.get(1).contains("H10~5")); // 元の値のまま
+    }
+
+    @Test
+    public void test全角スラッシュは追加区切り文字を指定しなくても変換される(@TempDir Path tempDir) throws Exception {
+        // 全角スラッシュ「／」はDateParserのCHAR_CONVERSION_PAIRSで常時半角に変換されるため、
+        // 追加区切り文字を指定しなくても和暦の年月区切りとして解釈できる
 
         Path inputFile = tempDir.resolve("input.csv");
         Path outputFile = tempDir.resolve("output.csv");
@@ -306,10 +336,41 @@ public class CsvDateConverterServiceIntegrationTest {
             OutputFormat.YYYYMMDD
         );
 
-        assertEquals(0, convertedCount); // 変換されない
+        assertEquals(1, convertedCount);
 
         List<String> outputLines = Files.readAllLines(outputFile);
-        assertTrue(outputLines.get(1).contains("H10／5")); // 元の値のまま
+        assertTrue(outputLines.get(1).contains("\"199805\"")); // H10／5 → 199805
+    }
+
+    @Test
+    public void test中点区切りの和暦で日が1日でもYYYYMMDD指定時は年月日精度で出力される(@TempDir Path tempDir) throws Exception {
+        // 「平 1・1・1」等は元号と年の間の空白・全角中点「・」がCsvDateConverterService独自の
+        // 元号マッチャーには対応しておらずDateParserへフォールバックするため、
+        // 日が1日でも年月精度に誤判定されずYYYYMMDD形式で出力されることを確認する
+
+        Path inputFile = tempDir.resolve("input.csv");
+        Path outputFile = tempDir.resolve("output.csv");
+
+        List<String> inputLines = Arrays.asList(
+            "項目名,列2,列3,列4,日付データ",
+            "取得日,データ1,データ2,データ3,平 1・1・1",
+            "使用開始日,データ4,データ5,データ6,平 １・１・１"
+        );
+        Files.write(inputFile, inputLines);
+
+        int convertedCount = service.convertCsvFile(
+            inputFile.toString(),
+            outputFile.toString(),
+            Arrays.asList("取得日", "使用開始日"),
+            "UTF-8",
+            OutputFormat.YYYYMMDD
+        );
+
+        assertEquals(2, convertedCount);
+
+        List<String> outputLines = Files.readAllLines(outputFile);
+        assertTrue(outputLines.get(1).contains("\"19890101\"")); // 平 1・1・1 → 19890101
+        assertTrue(outputLines.get(2).contains("\"19890101\"")); // 平 １・１・１ → 19890101
     }
 
     @Test

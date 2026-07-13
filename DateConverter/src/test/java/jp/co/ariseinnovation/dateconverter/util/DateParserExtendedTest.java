@@ -96,4 +96,49 @@ class DateParserExtendedTest {
             DateParser.Parse("R3.13.25");
         });
     }
+
+    @Test
+    void testParseWarekiYMD_元号と年の間に半角スペース() throws Exception {
+        // 平 1・1・1 → 平成1年1月1日
+        DateTime result = DateParser.Parse("平 1・1・1");
+        assertEquals(1989, result.getYear());
+        assertEquals(1, result.getMonthOfYear());
+        assertEquals(1, result.getDayOfMonth());
+    }
+
+    @Test
+    void testParseWarekiYMD_全角数字と全角スペース() throws Exception {
+        // 平 １・１・１ → 平成1年1月1日（全角数字・全角スペース混在）
+        DateTime result = DateParser.Parse("平 １・１・１");
+        assertEquals(1989, result.getYear());
+        assertEquals(1, result.getMonthOfYear());
+        assertEquals(1, result.getDayOfMonth());
+    }
+
+    @Test
+    void testParseWarekiYMD_元号直後のドットとスラッシュ区切り() throws Exception {
+        // H.30/09/30 → 平成30年9月30日
+        DateTime result = DateParser.Parse("H.30/09/30");
+        assertEquals(2018, result.getYear());
+        assertEquals(9, result.getMonthOfYear());
+        assertEquals(30, result.getDayOfMonth());
+    }
+
+    @Test
+    void testParseWarekiYMD_令和のドットとスラッシュ区切り() throws Exception {
+        // R.3/9/30 → 令和3年9月30日
+        DateTime result = DateParser.Parse("R.3/9/30");
+        assertEquals(2021, result.getYear());
+        assertEquals(9, result.getMonthOfYear());
+        assertEquals(30, result.getDayOfMonth());
+    }
+
+    @Test
+    void testParseWarekiYMD_全角ドット全角スラッシュ全角数字() throws Exception {
+        // H．３０／０９／３０ → 平成30年9月30日（全角ドット・全角スラッシュ・全角数字）
+        DateTime result = DateParser.Parse("H．３０／０９／３０");
+        assertEquals(2018, result.getYear());
+        assertEquals(9, result.getMonthOfYear());
+        assertEquals(30, result.getDayOfMonth());
+    }
 }

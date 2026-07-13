@@ -205,6 +205,12 @@ public class DatePrecisionUtil {
                 return true;
             }
 
+            // 和暦の年月日形式（元号+年+月+日）に構造的にマッチする場合は、
+            // 日の値に関わらず明示的に年月日精度（日が1日の場合と区別するため）
+            if (DateParser.isWarekiWithExplicitDay(src)) {
+                return true;
+            }
+
             // 日が1日の場合は年月精度、それ以外は年月日精度と判定
             return parsedDate.getDayOfMonth() != 1;
         } catch (Exception e) {

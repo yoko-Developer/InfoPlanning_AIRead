@@ -38,6 +38,16 @@ public class DatePrecisionUtilTest {
     }
 
     @Test
+    public void testHasDatePrecision_全角区切り文字の和暦で日が1日の場合() {
+        // 全角の元号・区切り文字（・等）はfindMatchingGengoに直接マッチせずDateParserの
+        // フォールバック経由で処理されるため、日が1日でも「日が明示的に指定された年月日精度」
+        // として正しく判定されることを確認する（日が1日の場合の年月精度との誤判定を防ぐ）
+        assertTrue(DatePrecisionUtil.hasDatePrecision("平1・1・1", null));
+        assertTrue(DatePrecisionUtil.hasDatePrecision("平１・１・１", null));
+        assertTrue(DatePrecisionUtil.hasDatePrecision("H.30/09/30", null));
+    }
+
+    @Test
     public void testDetermineOutputFormat_年月精度() {
         // 入力データが年月精度の場合、YYYYMMDDを指定してもYYYYMMになる
         GengoYearTable gengo = GengoYearTable.HEISEI_H;
