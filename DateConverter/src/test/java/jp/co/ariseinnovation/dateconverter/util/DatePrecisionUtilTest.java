@@ -48,6 +48,27 @@ public class DatePrecisionUtilTest {
     }
 
     @Test
+    public void testHasDatePrecision_日付の後ろに全角文字が続く場合() {
+        // 日付の後ろに全角文字（備考等）が続く場合でも、日が1日であっても
+        // 「日が明示的に指定された年月日精度」として正しく判定されることを確認する
+
+        // プライマリの元号マッチャー経由（gengoあり）
+        GengoYearTable gengo = GengoYearTable.HEISEI_H;
+        assertTrue(DatePrecisionUtil.hasDatePrecision("H30.1.1新品取得", gengo)); // 日が1日でも年月日精度
+        assertTrue(DatePrecisionUtil.hasDatePrecision("H30.2.28新品取得", gengo));
+        assertFalse(DatePrecisionUtil.hasDatePrecision("H30.2新品", gengo)); // 年月のみは年月精度のまま
+
+        // DateParserのフォールバック経由（gengoなし、「・」等の区切り文字を含む和暦）
+        assertTrue(DatePrecisionUtil.hasDatePrecision("平30・1・1新品取得", null)); // 日が1日でも年月日精度
+        assertTrue(DatePrecisionUtil.hasDatePrecision("平30・2・28新品取得", null));
+
+        // 西暦（DateParserのフォールバック経由）
+        assertTrue(DatePrecisionUtil.hasDatePrecision("20230401備考欄", null)); // 日が01でも年月日精度
+        assertTrue(DatePrecisionUtil.hasDatePrecision("2023-04-30備考欄", null));
+        assertFalse(DatePrecisionUtil.hasDatePrecision("2023-04備考欄", null)); // 年月のみは年月精度のまま
+    }
+
+    @Test
     public void testDetermineOutputFormat_年月精度() {
         // 入力データが年月精度の場合、YYYYMMDDを指定してもYYYYMMになる
         GengoYearTable gengo = GengoYearTable.HEISEI_H;
@@ -160,9 +181,11 @@ public class DatePrecisionUtilTest {
         assertTrue(DatePrecisionUtil.hasDatePrecision("2023.04.01", null)); // ドット区切り、日=01
         assertTrue(DatePrecisionUtil.hasDatePrecision("2023/04/01", null)); // スラッシュ区切り、日=01
         assertTrue(DatePrecisionUtil.hasDatePrecision("2023,04,01", null)); // カンマ区切り、日=01
+        assertTrue(DatePrecisionUtil.hasDatePrecision("2023／04／01", null)); // 全角スラッシュ区切り、日=01
 
         assertFalse(DatePrecisionUtil.hasDatePrecision("2023.04", null)); // ドット区切り年月のみ
         assertFalse(DatePrecisionUtil.hasDatePrecision("2023/04", null)); // スラッシュ区切り年月のみ
+        assertFalse(DatePrecisionUtil.hasDatePrecision("2023／04", null)); // 全角スラッシュ区切り年月のみ
     }
 
     /**

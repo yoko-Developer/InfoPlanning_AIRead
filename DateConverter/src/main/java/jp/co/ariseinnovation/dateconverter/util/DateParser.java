@@ -33,6 +33,9 @@ import java.util.regex.Pattern;
  * 3. 西暦6桁末日: 202312末、202312末日（YYYYMM末）
  * 4. 西暦区切り文字年月日・年月: 2023-04-30、2023.04.30、2023/04/30、2023,04,30等
  *    （区切り文字は和暦形式と同じ . - / , に対応）
+ * 5. 末尾の全角文字列: 平30・2・28新品取得、H10.5.15備考等、日付部分の直後に全角文字
+ *    （漢字・ひらがな・カタカナ・全角記号等）が続く場合、その部分を切り捨てて日付として解釈する
+ *    （半角の英数字・記号が続く場合は非対応。日付以外のデータとの誤判定を避けるため）
  */
 public class DateParser {
 
@@ -55,37 +58,45 @@ public class DateParser {
     };
 
     /**
-     * 和暦の年号と年の間に許容する区切り文字（H.30、R．３等に対応するため任意で1つまで許容）
-     * 年月日各項目間の区切り文字（. - / , ）は西暦形式と同様に複数個の連続も許容する
+     * 和暦・西暦共通の区切り文字（H.30、R．３等の和暦の年号と年の間や、2023-04-30等の
+     * 西暦の年月日各項目間に使用。DatePrecisionUtilからも参照される）
      */
-    private static final String WAREKI_SEP = "[.\\-/,]";
+    static final String DATE_SEPARATORS = "[.\\-/,]";
 
-    /** 和暦年月パターン（H10.5、昭和63.12、平成10.5、H.30等）
-     *  元号と年の間には空白や区切り文字（. - / ,）を任意で1つ挟める */
+    /**
+     * 日付部分の直後に続く、変換対象外として切り捨てる全角文字列（漢字・ひらがな・カタカナ・
+     * 全角記号等）。半角の英数字・記号はこの対象に含めない（コード番号等の非日付データを
+     * 誤って日付と判定してしまうリスクを避けるため）。CsvDateConverterService・DatePrecisionUtil
+     * からも参照される。
+     */
+    public static final String ZENKAKU_TRAILING =
+            "[\\u3000-\\u303F\\u3040-\\u30FF\\u4E00-\\u9FFF\\uFF00-\\uFFEF]*";
+
+    /** 和暦年月パターン（H10.5、昭和63.12、平成10.5、H.30、H10.5備考等）
+     *  元号と年の間には空白や区切り文字（. - / ,）を任意で1つ挟める。
+     *  末尾には全角文字列（備考等）を任意で許容する */
     private static final Pattern WAREKI_YM_PATTERN = Pattern.compile(
-            "^([HSRL]|昭和|平成|令和|昭|平|令)\\s*" + WAREKI_SEP + "?\\s*(\\d{1,2})" + WAREKI_SEP + "+(\\d{1,2})$");
+            "^([HSRL]|昭和|平成|令和|昭|平|令)\\s*" + DATE_SEPARATORS + "?\\s*(\\d{1,2})" + DATE_SEPARATORS + "+(\\d{1,2})" + ZENKAKU_TRAILING + "$");
 
-    /** 和暦年月日パターン（R3.12.25、H10.5.15、昭和63.12.31、H.30/09/30、平 1・1・1等）
-     *  元号と年の間には空白や区切り文字（. - / ,）を任意で1つ挟める */
+    /** 和暦年月日パターン（R3.12.25、H10.5.15、昭和63.12.31、H.30/09/30、平 1・1・1、平30・2・28新品取得等）
+     *  元号と年の間には空白や区切り文字（. - / ,）を任意で1つ挟める。
+     *  末尾には全角文字列（新品取得等）を任意で許容する */
     private static final Pattern WAREKI_YMD_PATTERN = Pattern.compile(
-            "^([HSRL]|昭和|平成|令和|昭|平|令)\\s*" + WAREKI_SEP + "?\\s*(\\d{1,2})" + WAREKI_SEP + "+(\\d{1,2})" + WAREKI_SEP + "+(\\d{1,2})$");
-    
-    /** 西暦8桁パターン（20231225等） */
-    private static final Pattern YYYYMMDD_PATTERN = Pattern.compile("^(\\d{4})(\\d{2})(\\d{2})$");
+            "^([HSRL]|昭和|平成|令和|昭|平|令)\\s*" + DATE_SEPARATORS + "?\\s*(\\d{1,2})" + DATE_SEPARATORS + "+(\\d{1,2})" + DATE_SEPARATORS + "+(\\d{1,2})" + ZENKAKU_TRAILING + "$");
 
-    /** 西暦の区切り文字（和暦と同様に複数の区切り文字に対応。DatePrecisionUtilからも参照される） */
-    static final String YYYY_SEPARATORS = "[.\\-/,]";
+    /** 西暦8桁パターン（20231225、20231225備考等） */
+    private static final Pattern YYYYMMDD_PATTERN = Pattern.compile("^(\\d{4})(\\d{2})(\\d{2})" + ZENKAKU_TRAILING + "$");
 
     /** 西暦区切り文字年月日パターン（2023-04-30、2023.04.30、2023/04/30、2023,04,30等） */
     private static final Pattern YYYY_MM_DD_PATTERN = Pattern.compile(
-            "^(\\d{4})" + YYYY_SEPARATORS + "+(\\d{1,2})" + YYYY_SEPARATORS + "+(\\d{1,2})$");
+            "^(\\d{4})" + DATE_SEPARATORS + "+(\\d{1,2})" + DATE_SEPARATORS + "+(\\d{1,2})" + ZENKAKU_TRAILING + "$");
 
     /** 西暦区切り文字年月パターン（2023-04、2023.04、2023/04、2023,04等） */
     private static final Pattern YYYY_MM_PATTERN = Pattern.compile(
-            "^(\\d{4})" + YYYY_SEPARATORS + "+(\\d{1,2})$");
-    
+            "^(\\d{4})" + DATE_SEPARATORS + "+(\\d{1,2})" + ZENKAKU_TRAILING + "$");
+
     /** 西暦6桁末日パターン（202312末、202312末日等） */
-    private static final Pattern YYYYMM_PATTERN = Pattern.compile("^(\\d{4})(\\d{2})末?日?$");
+    private static final Pattern YYYYMM_PATTERN = Pattern.compile("^(\\d{4})(\\d{2})末?日?" + ZENKAKU_TRAILING + "$");
 
     /**
      * プライベートコンストラクタ
@@ -349,7 +360,7 @@ public class DateParser {
      * @param src 正規化対象の文字列
      * @return 正規化後の文字列
      */
-    private static String normalizeString(String src) {
+    static String normalizeString(String src) {
         String trimmed = src.trim();
         
         // 変換が必要な文字が含まれているかチェック

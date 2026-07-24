@@ -374,6 +374,97 @@ public class CsvDateConverterServiceIntegrationTest {
     }
 
     @Test
+    public void test日付の後ろに全角文字が続く場合は切り捨てて変換される(@TempDir Path tempDir) throws Exception {
+        // 平30・2・28新品取得のように、日付の後ろに不特定の全角文字列（備考等）が
+        // 続く場合でも、その部分を切り捨てて日付として変換できることを確認する
+
+        Path inputFile = tempDir.resolve("input.csv");
+        Path outputFile = tempDir.resolve("output.csv");
+
+        List<String> inputLines = Arrays.asList(
+            "項目名,列2,列3,列4,日付データ",
+            "取得日,データ1,データ2,データ3,平30・2・28新品取得",       // フォールバック経由（・区切り）
+            "使用開始日,データ4,データ5,データ6,H30.2.28新品取得",       // プライマリの元号マッチャー経由
+            "供用日,データ7,データ8,データ9,平成30年2月28日新品取得",   // プライマリ・漢字パターン
+            "契約,データ10,データ11,データ12,2023-04-30備考欄"          // 西暦（フォールバック経由）
+        );
+        Files.write(inputFile, inputLines);
+
+        int convertedCount = service.convertCsvFile(
+            inputFile.toString(),
+            outputFile.toString(),
+            Arrays.asList("取得日", "使用開始日", "供用日", "契約"),
+            "UTF-8",
+            OutputFormat.YYYYMMDD
+        );
+
+        assertEquals(4, convertedCount);
+
+        List<String> outputLines = Files.readAllLines(outputFile);
+        assertTrue(outputLines.get(1).contains("\"20180228\"")); // 平30・2・28新品取得 → 20180228
+        assertTrue(outputLines.get(2).contains("\"20180228\"")); // H30.2.28新品取得 → 20180228
+        assertTrue(outputLines.get(3).contains("\"20180228\"")); // 平成30年2月28日新品取得 → 20180228
+        assertTrue(outputLines.get(4).contains("\"20230430\"")); // 2023-04-30備考欄 → 20230430
+    }
+
+    @Test
+    public void test日付の後ろに全角文字が続く場合でも年月精度は維持される(@TempDir Path tempDir) throws Exception {
+        // 日が指定されていない年月形式に全角文字が続く場合は、YYYYMMDD指定でも
+        // YYYYMM形式のまま出力されることを確認する（日精度への誤判定を防ぐ）
+
+        Path inputFile = tempDir.resolve("input.csv");
+        Path outputFile = tempDir.resolve("output.csv");
+
+        List<String> inputLines = Arrays.asList(
+            "項目名,列2,列3,列4,日付データ",
+            "取得日,データ1,データ2,データ3,H30.2新品"
+        );
+        Files.write(inputFile, inputLines);
+
+        int convertedCount = service.convertCsvFile(
+            inputFile.toString(),
+            outputFile.toString(),
+            Arrays.asList("取得日"),
+            "UTF-8",
+            OutputFormat.YYYYMMDD
+        );
+
+        assertEquals(1, convertedCount);
+
+        List<String> outputLines = Files.readAllLines(outputFile);
+        assertTrue(outputLines.get(1).contains("\"201802\"")); // H30.2新品 → 201802（年月精度）
+    }
+
+    @Test
+    public void test日付の後ろに半角文字が続く場合は変換されない(@TempDir Path tempDir) throws Exception {
+        // 全角文字限定の対応のため、日付の後ろに半角英数字が続く値は
+        // 日付として認識されず、元の値のまま維持されることを確認する
+        // （型番・コード等の非日付データを誤って変換しないため）
+
+        Path inputFile = tempDir.resolve("input.csv");
+        Path outputFile = tempDir.resolve("output.csv");
+
+        List<String> inputLines = Arrays.asList(
+            "項目名,列2,列3,列4,日付データ",
+            "取得日,データ1,データ2,データ3,H30.2.28ABC"
+        );
+        Files.write(inputFile, inputLines);
+
+        int convertedCount = service.convertCsvFile(
+            inputFile.toString(),
+            outputFile.toString(),
+            Arrays.asList("取得日"),
+            "UTF-8",
+            OutputFormat.YYYYMMDD
+        );
+
+        assertEquals(0, convertedCount);
+
+        List<String> outputLines = Files.readAllLines(outputFile);
+        assertTrue(outputLines.get(1).contains("H30.2.28ABC")); // 変換されず元の値のまま
+    }
+
+    @Test
     public void test追加区切り文字指定時に変換失敗した値は書き換え前の内容を維持する(@TempDir Path tempDir) throws Exception {
         // 対象列に日付として解釈できない値が入っており、かつその値が偶然
         // 追加区切り文字を含んでいる場合でも、値自体が書き換えられないことを確認する

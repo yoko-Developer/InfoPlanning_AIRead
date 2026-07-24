@@ -141,4 +141,48 @@ class DateParserExtendedTest {
         assertEquals(9, result.getMonthOfYear());
         assertEquals(30, result.getDayOfMonth());
     }
+
+    @Test
+    void testParseWarekiYMD_日付の後ろに全角文字が続く場合() throws Exception {
+        // 平30・2・28新品取得 → 平成30年2月28日（日付の後ろの全角文字列は切り捨てる）
+        DateTime result = DateParser.Parse("平30・2・28新品取得");
+        assertEquals(2018, result.getYear());
+        assertEquals(2, result.getMonthOfYear());
+        assertEquals(28, result.getDayOfMonth());
+    }
+
+    @Test
+    void testParseWarekiYM_日付の後ろに全角文字が続く場合() throws Exception {
+        // H30.2新品 → 平成30年2月（年月のみ、日は1日固定）
+        DateTime result = DateParser.Parse("H30.2新品");
+        assertEquals(2018, result.getYear());
+        assertEquals(2, result.getMonthOfYear());
+        assertEquals(1, result.getDayOfMonth());
+    }
+
+    @Test
+    void testParseYYYYMMDD_日付の後ろに全角文字が続く場合() throws Exception {
+        // 20230430備考欄 → 2023年4月30日
+        DateTime result = DateParser.Parse("20230430備考欄");
+        assertEquals(2023, result.getYear());
+        assertEquals(4, result.getMonthOfYear());
+        assertEquals(30, result.getDayOfMonth());
+    }
+
+    @Test
+    void testParseYYYY_MM_DD_日付の後ろに全角文字が続く場合() throws Exception {
+        // 2023-04-30備考 → 2023年4月30日
+        DateTime result = DateParser.Parse("2023-04-30備考");
+        assertEquals(2023, result.getYear());
+        assertEquals(4, result.getMonthOfYear());
+        assertEquals(30, result.getDayOfMonth());
+    }
+
+    @Test
+    void testParseWarekiYMD_日付の後ろに半角文字が続く場合は非対応() {
+        // 半角英数字が続く場合は日付として認識しない（非日付データの誤変換を避けるため）
+        assertThrows(Exception.class, () -> {
+            DateParser.Parse("H30.2.28ABC");
+        });
+    }
 }

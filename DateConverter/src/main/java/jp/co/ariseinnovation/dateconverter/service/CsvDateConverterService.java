@@ -332,20 +332,21 @@ public class CsvDateConverterService {
      */
     private static final String YEAR_MONTH_DAY_SEPARATORS = "[.\\-/,年月日]";
     
-    /** 
+    /**
      * コンパイル済み正規表現パターン（パフォーマンス向上のため事前コンパイル）
+     * 末尾には全角文字列（新品取得等の日付以降の備考）を任意で許容する
      */
-    private static final java.util.regex.Pattern PATTERN_3_DIGITS = java.util.regex.Pattern.compile("^\\d{3}$");
-    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_DAY_KANJI = java.util.regex.Pattern.compile("(\\d{1,2})年(\\d{1,2})月(\\d{1,2})日?");
-    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_KANJI = java.util.regex.Pattern.compile("(\\d{1,2})年(\\d{1,2})月?");
-    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_DAY_SEPARATOR = java.util.regex.Pattern.compile("(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})");
-    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_SEPARATOR = java.util.regex.Pattern.compile("(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})");
-    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_DAY_SEPARATOR_EXTENDED = java.util.regex.Pattern.compile("(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{3,4})");
-    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_EXTENDED_SEPARATOR = java.util.regex.Pattern.compile("(\\d{3,4})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})");
-    private static final java.util.regex.Pattern PATTERN_6_DIGITS = java.util.regex.Pattern.compile("(\\d{2})(\\d{2})(\\d{2})");
-    private static final java.util.regex.Pattern PATTERN_5_DIGITS = java.util.regex.Pattern.compile("(\\d{2})(\\d{3})");
-    private static final java.util.regex.Pattern PATTERN_4_DIGITS = java.util.regex.Pattern.compile("(\\d{2})(\\d{2})");
-    private static final java.util.regex.Pattern PATTERN_2_DIGITS = java.util.regex.Pattern.compile("(\\d{1})(\\d{1})");
+    private static final java.util.regex.Pattern PATTERN_3_DIGITS = java.util.regex.Pattern.compile("^(\\d{3})" + DateParser.ZENKAKU_TRAILING + "$");
+    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_DAY_KANJI = java.util.regex.Pattern.compile("(\\d{1,2})年(\\d{1,2})月(\\d{1,2})日?" + DateParser.ZENKAKU_TRAILING);
+    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_KANJI = java.util.regex.Pattern.compile("(\\d{1,2})年(\\d{1,2})月?" + DateParser.ZENKAKU_TRAILING);
+    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_DAY_SEPARATOR = java.util.regex.Pattern.compile("(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + DateParser.ZENKAKU_TRAILING);
+    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_SEPARATOR = java.util.regex.Pattern.compile("(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + DateParser.ZENKAKU_TRAILING);
+    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_DAY_SEPARATOR_EXTENDED = java.util.regex.Pattern.compile("(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{3,4})" + DateParser.ZENKAKU_TRAILING);
+    private static final java.util.regex.Pattern PATTERN_YEAR_MONTH_EXTENDED_SEPARATOR = java.util.regex.Pattern.compile("(\\d{3,4})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + DateParser.ZENKAKU_TRAILING);
+    private static final java.util.regex.Pattern PATTERN_6_DIGITS = java.util.regex.Pattern.compile("(\\d{2})(\\d{2})(\\d{2})" + DateParser.ZENKAKU_TRAILING);
+    private static final java.util.regex.Pattern PATTERN_5_DIGITS = java.util.regex.Pattern.compile("(\\d{2})(\\d{3})" + DateParser.ZENKAKU_TRAILING);
+    private static final java.util.regex.Pattern PATTERN_4_DIGITS = java.util.regex.Pattern.compile("(\\d{2})(\\d{2})" + DateParser.ZENKAKU_TRAILING);
+    private static final java.util.regex.Pattern PATTERN_2_DIGITS = java.util.regex.Pattern.compile("(\\d{1})(\\d{1})" + DateParser.ZENKAKU_TRAILING);
 
     /**
      * 入力文字列にマッチする元号をGengoYearTableから検索（最適化版）
@@ -382,29 +383,30 @@ public class CsvDateConverterService {
         String quotedGengo = java.util.regex.Pattern.quote(gengoStr);
         
         // 複数の区切り文字パターンを試行（効率化のため配列で管理）
+        // 末尾には全角文字列（新品取得等の日付以降の備考）を任意で許容する
         String[] patternStrings = {
-            // 年月日区切り文字パターン（例：R5.4.30、平成10年5月15日）
-            "^" + quotedGengo + "(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})$",
+            // 年月日区切り文字パターン（例：R5.4.30、平成10年5月15日、H10.5.15新品取得）
+            "^" + quotedGengo + "(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + DateParser.ZENKAKU_TRAILING + "$",
             // 年月日漢字パターン（例：平成10年5月15日）
-            "^" + quotedGengo + "(\\d{1,2})年(\\d{1,2})月(\\d{1,2})日?$",
+            "^" + quotedGengo + "(\\d{1,2})年(\\d{1,2})月(\\d{1,2})日?" + DateParser.ZENKAKU_TRAILING + "$",
             // 年月（3-4桁）日拡張区切り文字パターン（例：H105.30、H1005.30）
-            "^" + quotedGengo + "(\\d{3,4})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})$",
+            "^" + quotedGengo + "(\\d{3,4})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + DateParser.ZENKAKU_TRAILING + "$",
             // 年月日拡張区切り文字パターン（例：H10.530、H10.0530）
-            "^" + quotedGengo + "(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{3,4})$",
+            "^" + quotedGengo + "(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{3,4})" + DateParser.ZENKAKU_TRAILING + "$",
             // 基本的な年月区切り文字パターン（スペースは除外）
-            "^" + quotedGengo + "(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})$",
+            "^" + quotedGengo + "(\\d{1,2})" + YEAR_MONTH_DAY_SEPARATORS + "+(\\d{1,2})" + DateParser.ZENKAKU_TRAILING + "$",
             // 年月文字を含むパターン（例：平成10年5月）
-            "^" + quotedGengo + "(\\d{1,2})年(\\d{1,2})月?$",
+            "^" + quotedGengo + "(\\d{1,2})年(\\d{1,2})月?" + DateParser.ZENKAKU_TRAILING + "$",
             // 区切り文字なし6桁パターン（例：H100530 → H10年05月30日として解釈）
-            "^" + quotedGengo + "(\\d{2})(\\d{2})(\\d{2})$",
+            "^" + quotedGengo + "(\\d{2})(\\d{2})(\\d{2})" + DateParser.ZENKAKU_TRAILING + "$",
             // 区切り文字なし5桁パターン（例：H10530 → H10年530として解釈）
-            "^" + quotedGengo + "(\\d{2})(\\d{3})$",
+            "^" + quotedGengo + "(\\d{2})(\\d{3})" + DateParser.ZENKAKU_TRAILING + "$",
             // 区切り文字なし4桁パターン（例：H1005 → H10年05月として解釈）
-            "^" + quotedGengo + "(\\d{2})(\\d{2})$",
+            "^" + quotedGengo + "(\\d{2})(\\d{2})" + DateParser.ZENKAKU_TRAILING + "$",
             // 区切り文字なし3桁パターン（例：H105 → 特別判定ロジックで処理）
-            "^" + quotedGengo + "(\\d{3})$",
+            "^" + quotedGengo + "(\\d{3})" + DateParser.ZENKAKU_TRAILING + "$",
             // 区切り文字なし2桁パターン（例：H15 → H1年5月として解釈）
-            "^" + quotedGengo + "(\\d{1})(\\d{1})$"
+            "^" + quotedGengo + "(\\d{1})(\\d{1})" + DateParser.ZENKAKU_TRAILING + "$"
         };
         
         // 効率化：一度のループでパターンマッチングを実行
@@ -507,9 +509,10 @@ public class CsvDateConverterService {
      * @return [年, 月]または[年, 月, 日]の配列、抽出できない場合はnull
      */
     private int[] extractYearMonthDay(String yearMonthDayPart, GengoYearTable gengo) {
-        // 3桁数字の特別処理（事前コンパイル済みパターンを使用）
-        if (PATTERN_3_DIGITS.matcher(yearMonthDayPart).matches()) {
-            return extract3DigitYearMonth(yearMonthDayPart, gengo);
+        // 3桁数字の特別処理（事前コンパイル済みパターンを使用。末尾の全角文字列は切り捨てる）
+        java.util.regex.Matcher matcher3Digits = PATTERN_3_DIGITS.matcher(yearMonthDayPart);
+        if (matcher3Digits.matches()) {
+            return extract3DigitYearMonth(matcher3Digits.group(1), gengo);
         }
         
         // 事前コンパイル済みパターンを順次試行（パフォーマンス向上）
