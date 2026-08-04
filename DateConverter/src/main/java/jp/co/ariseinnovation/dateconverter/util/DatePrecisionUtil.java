@@ -51,20 +51,20 @@ public class DatePrecisionUtil {
     private static boolean hasWarekiDatePrecision(String src, GengoYearTable gengo) {
         String yearMonthDayPart = src.substring(gengo.gengo.length());
         
-        // 年月日を含むパターンをチェック
+        // 年月日を含むパターンをチェック（末尾の全角文字列は任意で許容する）
         String[] datePatterns = {
-            // 年月日文字を含むパターン（例：10年5月15日）
-            "(\\d{1,2})年(\\d{1,2})月(\\d{1,2})日",
-            // 年月日区切り文字パターン（例：10.5.15、10-5-15、10/5/15、10,5,15）
-            "(\\d{1,2})[.\\-/,]+(\\d{1,2})[.\\-/,]+(\\d{1,2})",
+            // 年月日文字を含むパターン（例：10年5月15日、10年5月15日備考）
+            "(\\d{1,2})年(\\d{1,2})月(\\d{1,2})日" + DateParser.ZENKAKU_TRAILING,
+            // 年月日区切り文字パターン（例：10.5.15、10-5-15、10/5/15、10,5,15、10.5.15新品取得）
+            "(\\d{1,2})[.\\-/,]+(\\d{1,2})[.\\-/,]+(\\d{1,2})" + DateParser.ZENKAKU_TRAILING,
             // 年月（3-4桁）日拡張区切り文字パターン（例：105.30、1005.30）
-            "(\\d{3,4})[.\\-/,]+(\\d{1,2})",
+            "(\\d{3,4})[.\\-/,]+(\\d{1,2})" + DateParser.ZENKAKU_TRAILING,
             // 年月日拡張区切り文字パターン（例：10.530、10.0530）
-            "(\\d{1,2})[.\\-/,]+(\\d{3,4})",
+            "(\\d{1,2})[.\\-/,]+(\\d{3,4})" + DateParser.ZENKAKU_TRAILING,
             // 区切り文字なし6桁パターン（例：100515 → 10年05月15日）
-            "(\\d{2})(\\d{2})(\\d{2})",
+            "(\\d{2})(\\d{2})(\\d{2})" + DateParser.ZENKAKU_TRAILING,
             // 区切り文字なし5桁パターン（例：10530 → 10年530）
-            "(\\d{2})(\\d{3})"
+            "(\\d{2})(\\d{3})" + DateParser.ZENKAKU_TRAILING
         };
         
         for (String pattern : datePatterns) {
@@ -187,13 +187,17 @@ public class DatePrecisionUtil {
      */
     private static boolean hasOtherFormatDatePrecision(String src) {
         try {
-            // 西暦区切り文字年月日形式（2023-04-30、2023.04.30等）は明示的に年月日精度
-            if (src.matches("^\\d{4}" + DateParser.YYYY_SEPARATORS + "+\\d{1,2}" + DateParser.YYYY_SEPARATORS + "+\\d{1,2}$")) {
+            // 区切り文字変換後の値で判定する（全角スラッシュ「／」等は半角に変換されてから判定されるため、
+            // 和暦のisWarekiWithExplicitDayと同様の考え方で正規化後の文字列を使用する）
+            String normalized = DateParser.normalizeString(src);
+
+            // 西暦区切り文字年月日形式（2023-04-30、2023.04.30、2023／04／30、2023-04-30備考等）は明示的に年月日精度
+            if (normalized.matches("^\\d{4}" + DateParser.DATE_SEPARATORS + "+\\d{1,2}" + DateParser.DATE_SEPARATORS + "+\\d{1,2}" + DateParser.ZENKAKU_TRAILING + "$")) {
                 return true;
             }
 
-            // 西暦区切り文字年月形式（2023-04、2023.04等）は明示的に年月精度
-            if (src.matches("^\\d{4}" + DateParser.YYYY_SEPARATORS + "+\\d{1,2}$")) {
+            // 西暦区切り文字年月形式（2023-04、2023.04、2023／04、2023-04備考等）は明示的に年月精度
+            if (normalized.matches("^\\d{4}" + DateParser.DATE_SEPARATORS + "+\\d{1,2}" + DateParser.ZENKAKU_TRAILING + "$")) {
                 return false;
             }
 
@@ -201,7 +205,13 @@ public class DatePrecisionUtil {
 
             // YYYYMMDD形式（8桁連結）は日の値に関わらず明示的に年月日精度
             // （日が01の場合、getDayOfMonth()だけでは「年月精度で1日固定」と区別できないため）
-            if (src.matches("^\\d{8}$")) {
+            if (normalized.matches("^\\d{8}" + DateParser.ZENKAKU_TRAILING + "$")) {
+                return true;
+            }
+
+            // 和暦の年月日形式（元号+年+月+日）に構造的にマッチする場合は、
+            // 日の値に関わらず明示的に年月日精度（日が1日の場合と区別するため）
+            if (DateParser.isWarekiWithExplicitDay(src)) {
                 return true;
             }
 
