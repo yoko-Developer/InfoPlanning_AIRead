@@ -205,7 +205,7 @@ public class DatePrecisionUtil {
 
             // YYYYMMDD形式（8桁連結）は日の値に関わらず明示的に年月日精度
             // （日が01の場合、getDayOfMonth()だけでは「年月精度で1日固定」と区別できないため）
-            if (src.matches("^\\d{8}" + DateParser.ZENKAKU_TRAILING + "$")) {
+            if (normalized.matches("^\\d{8}" + DateParser.ZENKAKU_TRAILING + "$")) {
                 return true;
             }
 
