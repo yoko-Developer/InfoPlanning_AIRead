@@ -13,6 +13,6 @@ import jp.co.ariseinnovation.setfixedassetaccountcode.entity.FixedAssetAccountME
  */
 @Repository
 public interface FixedAssetAccountMDao extends JpaRepository<FixedAssetAccountMEntity, String> {
-    @Query(value = "select * from fixed_asset_account_m where :fixedAssetAccountName ~ fixed_asset_account_name", nativeQuery = true)
+    @Query(value = "select * from fixed_asset_account_m where :fixedAssetAccountName LIKE '%' + fixed_asset_account_name + '%'", nativeQuery = true)
     List<FixedAssetAccountMEntity> searchByFixedAssetAccountName(String fixedAssetAccountName);
 }
