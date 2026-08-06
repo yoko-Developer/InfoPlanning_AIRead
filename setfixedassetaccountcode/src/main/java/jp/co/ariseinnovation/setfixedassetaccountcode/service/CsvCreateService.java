@@ -181,15 +181,15 @@ public class CsvCreateService {
         // boolean checkNotContainVal = CommonConsts.isNotContain(joinValue);
 
         return checkEqualVal
-            || checkContainVal || checkSuffixVal;
-            // && checkNotContainVal;
+                || checkContainVal || checkSuffixVal;
+        // && checkNotContainVal;
     }
 
     // 対象Valueが固定資産科目マスタの科目名を含んでいるかを判定
     private Optional<FixedAssetAccountMEntity> getMatchFixedAssetAccountMInfo(List<FixedAssetAccountMEntity> fixedAssetAccountMList, String checkValue) {
         Optional<FixedAssetAccountMEntity> matchFixedAssetAccountM = fixedAssetAccountMList.stream()
-                                        .filter(fixedAssetAccountM -> checkValue.contains(fixedAssetAccountM.getFixedAssetAccountName()))
-                                        .findFirst();
+                .filter(fixedAssetAccountM -> checkValue.contains(fixedAssetAccountM.getFixedAssetAccountName()))
+                .findFirst();
         return matchFixedAssetAccountM;
     }
 
