@@ -1,13 +1,11 @@
 spring:
   application:
     name: setfixedassetaccountcode
-  datasource:
-    url: jdbc:postgresql://localhost:5432/kanjou_ph3
-    username: postgres
-    password: "x5WU7Xb3"
-    driverClassName: org.postgresql.Driver
   jpa:
     show-sql: false
+    hibernate:
+      ddl-auto: create
+
 logging:
   level:
     com.zaxxer.hikari: warn
@@ -16,3 +14,27 @@ logging:
     appender.console.encoding: UTF-8
 csv:
   outPath: C:\AIRead_Report\CSV\
+
+---
+# デフォルト設定（PostgreSQL用）設定
+spring:
+  config:
+    activate:
+      on-profile: default
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kanjou_ph3
+    username: postgres
+    password: "x5WU7Xb3"
+    driverClassName: org.postgresql.Driver
+
+---
+# SQL Server用設定（ポート1433）
+spring:
+  config:
+    activate:
+      on-profile: sqlserver
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=kanjou_ph3;encrypt=true;trustServerCertificate=true
+    username: sa
+    password: "YourPassword"
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
