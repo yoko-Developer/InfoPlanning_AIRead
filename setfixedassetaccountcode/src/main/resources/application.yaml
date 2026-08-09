@@ -1,4 +1,20 @@
+server:
+  port: 8080
+
+logging:
+  level:
+    com.zaxxer.hikari: warn
+  file:
+    name: C:\AIRead_ETL\logs\setfixedassetaccountcode.log
+csv:
+  outPath: C:\AIRead_Report\CSV\
+
+---
+# デフォルト設定（PostgreSQL用）
 spring:
+  config:
+    activate:
+      on-profile: default
   application:
     name: setfixedassetaccountcode
   datasource:
@@ -8,11 +24,26 @@ spring:
     driverClassName: org.postgresql.Driver
   jpa:
     show-sql: false
-logging:
-  level:
-    com.zaxxer.hikari: warn
-  file:
-    name: C:\AIRead_ETL\logs\setfixedassetaccountcode.log
-    appender.console.encoding: UTF-8
-csv:
-  outPath: C:\AIRead_Report\CSV\
+    hibernate:
+      ddl-auto: create
+
+---
+# SQL Server用設定（ポート1433）
+spring:
+  config:
+    activate:
+      on-profile: sqlserver
+  application:
+    name: setfixedassetaccountcode
+  datasource:
+    url: jdbc:sqlserver://localhost;instanceName=SQLEXPRESS;databaseName=kanjou_ph3;encrypt=true;trustServerCertificate=true
+    username: sa
+    password: password
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServerDialect
